@@ -1,0 +1,4 @@
+.env
+cache-directory/
+__pycache__/
+.venv/
