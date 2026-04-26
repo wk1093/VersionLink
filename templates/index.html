@@ -23,7 +23,14 @@
                 class="mt-4 bg-sky-600 hover:bg-sky-500 text-white font-bold py-2 px-6 rounded-lg">
                 Analyze Compatibility
             </button>
+            <div class="mt-2 flex gap-2">
+            <input type="file" id="importFile" class="hidden" onchange="handleImport(this)">
+            <button onclick="document.getElementById('importFile').click()" class="text-xs text-slate-400 hover:text-white transition-colors">
+                Import File...
+            </button>
+        </div>
         </section>
+
 
         <div id="manifestSection" class="hidden mb-6 p-4 bg-slate-900/50 rounded-lg border border-slate-700">
             <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-500 mb-3">Mod Manifest</h2>
@@ -37,6 +44,15 @@
         <div id="loading" class="hidden text-sky-400">Querying APIs...</div>
 
         <section id="results" class="hidden space-y-6">
+            <div class="flex gap-3 border-t border-slate-700 pt-6">
+                <button onclick="exportBasic()" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded">
+                    Export Slugs (.txt)
+                </button>
+                <button onclick="exportAdvanced()" class="text-xs bg-sky-900/50 hover:bg-sky-900 text-sky-300 border border-sky-700 px-3 py-2 rounded">
+                    Export Advanced (.json)
+                </button>
+            </div>
+
             <div id="statusBadge" class="inline-block px-3 py-1 rounded-full text-sm font-bold"></div>
             <div id="configList" class="grid grid-cols-2 gap-2"></div>
             <div id="conflictSection" class="hidden">
@@ -47,6 +63,8 @@
     </div>
 
     <script>
+
+        let lastResult = null;
 
         async function checkCompatibility() {
             const modInput = document.getElementById('modInput');
@@ -81,6 +99,7 @@
                 console.log("JS: Received data:", data);
 
                 loading.classList.add('hidden');
+                lastResult = data;
                 renderResults(data);
             } catch (err) {
                 console.error("JS: Fetch Error:", err);
@@ -141,6 +160,54 @@
                     failedList.appendChild(li);
                 });
             }
+        }
+
+        function exportBasic() {
+            if (!lastResult) return;
+            const slugs = lastResult.found_mods.map(m => m.name).join('\n');
+            downloadFile(slugs, 'modlist.txt', 'text/plain');
+        }
+
+        // 2. Advanced Export (JSON Metadata)
+        function exportAdvanced() {
+            if (!lastResult) return;
+            const dataStr = JSON.stringify(lastResult, null, 2);
+            downloadFile(dataStr, 'versionlink_advanced.json', 'application/json');
+        }
+
+        function downloadFile(content, fileName, contentType) {
+            const a = document.createElement("a");
+            const file = new Blob([content], { type: contentType });
+            a.href = URL.createObjectURL(file);
+            a.download = fileName;
+            a.click();
+        }
+
+        async function handleImport(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const content = e.target.result;
+                
+                try {
+                    // Try to parse as JSON (Advanced Format)
+                    const data = JSON.parse(content);
+                    if (data.found_mods) {
+                        // If it's our advanced format, extract the slugs and put them in the textarea
+                        const slugs = data.found_mods.map(m => m.name).join('\n');
+                        document.getElementById('modInput').value = slugs;
+                    }
+                } catch (err) {
+                    // If JSON fails, treat as plain text (Basic Format)
+                    document.getElementById('modInput').value = content.trim();
+                }
+                
+                // Auto-trigger analysis after import
+                checkCompatibility();
+            };
+            reader.readAsText(file);
         }
 
         // Add event listener manually to be safe

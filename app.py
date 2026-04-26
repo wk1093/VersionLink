@@ -46,7 +46,8 @@ def check_compatibility():
             # Metadata for the UI (slug and URL)
             found_metadata.append({
                 "name": identifier,
-                "url": f"https://modrinth.com/mod/{identifier}" if m['platform'] == 'modrinth' else "#"
+                "url": f"https://modrinth.com/mod/{identifier}" if m['platform'] == 'modrinth' else "#",
+                "configs": list(state.supported_configs)
             })
         else:
             not_found.append(identifier)
